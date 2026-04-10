@@ -1,0 +1,114 @@
+name: Build and Test
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    needs: get-directories
+    strategy:
+      matrix:
+        directory: ${{ fromJson(needs.get-directories.outputs.directories) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install requirements
+        run: pip install -r requirements-dev.txt
+
+      - name: Update __init__.py
+        working-directory: src/${{ matrix.directory }}
+        run: |
+          name=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])")
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ -d oracle/*_mcp_server ]; then
+            init_py_file=oracle/*_mcp_server/__init__.py
+            echo "\"\"\"\nCopyright (c) 2025, Oracle and/or its affiliates.\nLicensed under the Universal Permissive License v1.0 as shown at\nhttps://oss.oracle.com/licenses/upl.\n\"\"\"\n" > $$init_py_file; \
+            echo "__project__ = \"$name\"" >> $init_py_file
+            echo "__version__ = \"$version\"" >> $init_py_file
+          fi
+
+      - name: Sync
+        working-directory: src/${{ matrix.directory }}
+        run: uv sync --locked --all-extras --dev
+
+      - name: Test and Coverage
+        working-directory: src/${{ matrix.directory }}
+        run: uv run pytest --cov=. --cov-branch --cov-report=html:htmlcov/${{ matrix.directory }} --cov-report=term-missing
+        env:
+          COVERAGE_FILE: .coverage.${{ matrix.directory }}
+
+      - name: Build
+        working-directory: src/${{ matrix.directory }}
+        run: uv build
+
+      - name: Test install
+        working-directory: src/${{ matrix.directory }}
+        run: uv pip install .
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.directory }}-coverage-report
+          path: |
+            src/${{ matrix.directory }}/htmlcov/*
+            src/${{ matrix.directory }}/.coverage.${{ matrix.directory }}
+          include-hidden-files: true
+
+  get-directories:
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.get-directories.outputs.directories }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get directories
+        id: get-directories
+        run: |
+          directories=$(ls src | grep -v dbtools-mcp-server | grep -v mysql-mcp-server | grep -v oci-pricing-mcp-server | grep -v oracle-db-doc-mcp-server | grep -v oracle-db-mcp-java-toolkit | jq -R -s -c 'split("\n")[:-1]')
+          echo "directories=$directories" >> $GITHUB_OUTPUT
+
+  combined-coverage:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install requirements
+        run: pip install -r requirements-dev.txt
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-coverage-report' # Downloads all artifacts starting with 'my-artifact-'
+          merge-multiple: true # Merges the contents of multiple artifacts into a single directory
+
+      - name: Combine Coverage reports
+        run: |
+          make combine-coverage
+
+      - name: Upload combined reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-in-one-coverage-report
+          path: |
+            oracle-mcp-coverage-report/*
+            .coverage
+          include-hidden-files: true
+

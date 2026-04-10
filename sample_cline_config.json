@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "oracle-oci-api-mcp-server": {
+      "type": "stdio",
+      "command": "__MCP_VENV_BIN__/oracle.oci-api-mcp-server",
+      "args": [],
+      "env": {
+        "OCI_CONFIG_PROFILE": "<your-profile-name>",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "oracle-oci-compute-mcp-server": {
+      "type": "stdio",
+      "command": "__MCP_VENV_BIN__/oracle.oci-compute-mcp-server",
+      "args": [],
+      "env": {
+        "OCI_CONFIG_PROFILE": "<your-profile-name>",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "oracle-oci-api-mcp-server-vm": {
+      "type": "stdio",
+      "command": "ssh",
+      "args": [
+        "-i",
+        "/Users/bfshaik/.ssh/oci-vm-key",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "opc@129.80.158.0",
+        "OCI_CONFIG_PROFILE=DEFAULT OCI_CONFIG_FILE=/home/opc/.oci/config OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True FASTMCP_LOG_LEVEL=ERROR /home/opc/oracle-mcp/.venv/bin/oracle.oci-api-mcp-server"
+      ]
+    }
+  }
+}

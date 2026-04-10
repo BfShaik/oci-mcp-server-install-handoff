@@ -66,8 +66,8 @@ Example returned values during validation:
   - `bucket-20251203-1305`
   - `mlmodel`
 - IAM users:
-  - `baba.shaik@oracle.com`
-  - `JOSEPH.SCANLON@ORACLE.COM`
+  - `B********@oracle.com`
+  - `J**********@ORACLE.COM`
 
 ## Quick Start On A VM
 
@@ -133,7 +133,6 @@ Use oracle-oci-api-mcp-server-vm to run:
 iam user list --compartment-id <tenancy_ocid> --all --query data[].name --raw-output
 ```
 
-```text
 Use oracle-oci-api-mcp-server-vm to run:
 os bucket list --compartment-id <compartment_ocid> --namespace-name <namespace> --query data[].name --raw-output
 ```
